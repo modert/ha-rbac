@@ -1231,6 +1231,7 @@ class Evaluator:
         """
         self._compiled.clear()
         self._cache.clear()
+        self._native_permissions = Permissions(pass_through=True)
 
     @callback
     def _person_state_for(self, user: Any) -> State | None:
