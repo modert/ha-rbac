@@ -68,9 +68,11 @@ async def test_companion_registration_respects_explicit_denials(
     monkeypatch.setattr(
         decider._catalog,
         "tier_for_request",
-        lambda method, path: TIER_OPEN
-        if method == "POST" and path == "/api/mobile_app/registrations"
-        else original_tier(method, path),
+        lambda method, path: (
+            TIER_OPEN
+            if method == "POST" and path == "/api/mobile_app/registrations"
+            else original_tier(method, path)
+        ),
     )
     permissions = _read_only(hass)
     command = "POST /api/mobile_app/registrations"
