@@ -20,7 +20,9 @@ async def test_hidden_default_uses_allowed_dashboard(hass: HomeAssistant) -> Non
     assert result["value"]["default_panel"] == "dashboard-child"
     assert result["value"]["onboarded_version"] == "2026.9"
     assert source["value"]["default_panel"] == "lovelace"
-    assert REGISTRY.filter_event("frontend/subscribe_system_data", ctx, source) == result
+    assert (
+        REGISTRY.filter_event("frontend/subscribe_system_data", ctx, source) == result
+    )
 
 
 async def test_allowed_personal_default_is_preserved(hass: HomeAssistant) -> None:
