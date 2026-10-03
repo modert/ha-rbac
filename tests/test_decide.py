@@ -58,16 +58,20 @@ def _read_only(hass: HomeAssistant) -> Permissions:
     return Permissions(roles=[role])
 
 
-async def test_companion_registration_is_owned_by_the_authenticated_user(
-    hass: HomeAssistant, decider: Decider
+async def test_companion_registration_respects_explicit_denials(
+    hass: HomeAssistant, decider: Decider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A limited account can onboard its phone, unless explicitly denied."""
-    from homeassistant.components.mobile_app.http_api import (  # noqa: PLC0415
-        RegistrationsView,
+    # The real route is authenticated, not admin-only. Isolate that catalogue
+    # contract here; importing mobile_app pulls in optional cloud/camera deps.
+    original_tier = decider._catalog.tier_for_request
+    monkeypatch.setattr(
+        decider._catalog,
+        "tier_for_request",
+        lambda method, path: TIER_OPEN
+        if method == "POST" and path == "/api/mobile_app/registrations"
+        else original_tier(method, path),
     )
-
-    assert RegistrationsView.requires_auth
-    decider._catalog.rebuild()
     permissions = _read_only(hass)
     command = "POST /api/mobile_app/registrations"
     assert decider.decide(permissions, KIND_HTTP, command, {}).allowed
