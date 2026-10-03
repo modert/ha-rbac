@@ -552,6 +552,17 @@ class Decider:
         ) is not None:
             return app_decision
 
+        if (
+            kind == KIND_HTTP
+            and method == "POST"
+            and path == "/api/mobile_app/registrations"
+        ):
+            # Companion creates a registration owned by the authenticated HA
+            # user; Core replaces user_id with request["hass_user"].id. It
+            # cannot name another user's registration or operate an entity.
+            # Keep this after the tier/app gates so explicit denials still win.
+            return Decision(allowed=True)
+
         # 2c. A template reports which entities it read, but not which
         #     attributes -- so a role that withholds any cannot let one through.
         if permissions.hides_attributes and _reads_attributes(payload):
@@ -759,6 +770,15 @@ class Decider:
 
         prefix = url_path.replace("-", "_")
         if kind != KIND_HTTP and name.startswith(f"{prefix}/"):
+            if (
+                url_path == "todo"
+                and name == "todo/item/subscribe"
+                and isinstance(payload.get("entity_id"), str)
+                and payload["entity_id"].startswith("todo.")
+            ):
+                # An embedded task card uses this even when the To-do panel
+                # is hidden. The ordinary entity gate still checks its list.
+                return False
             # `config/` is not the Settings panel's own namespace, it is Home
             # Assistant's namespace for every registry, and the area, device,
             # entity and floor lists behind it are what any dashboard reads

@@ -17,6 +17,11 @@ frontend preference responses, without changing stored personal or system data.
 This prevents Home Assistant 2026.9 from getting stuck on its loading screen
 when the role does not include the household's default Overview.
 
+Companion registration is allowed after the normal tier/app checks: Core binds
+the new registration to the authenticated user. Explicit command denials still
+win. An embedded To-do card may subscribe to its named list when the To-do panel
+is hidden; the regular entity read check still applies.
+
 The upstream webhook limitations remain. This release is intended to restrict
 normal dashboard, search, and device controls; it is not a complete audit of all
 Companion-app and custom-integration paths. Continue merging upstream security

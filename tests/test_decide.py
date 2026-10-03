@@ -16,6 +16,7 @@ from homeassistant.setup import async_setup_component
 from custom_components.ha_rbac.catalog import Catalog
 from custom_components.ha_rbac.const import GRANT_HISTORY, GRANT_LOGBOOK, TIER_OPEN
 from custom_components.ha_rbac.decide import (
+    KIND_HTTP,
     KIND_WS,
     REASON_APP,
     REASON_DEGRADED,
@@ -55,6 +56,63 @@ def _read_only(hass: HomeAssistant) -> Permissions:
         PermissionLookup(er.async_get(hass), dr.async_get(hass)),
     )
     return Permissions(roles=[role])
+
+
+async def test_companion_registration_is_owned_by_the_authenticated_user(
+    hass: HomeAssistant, decider: Decider
+) -> None:
+    """A limited account can onboard its phone, unless explicitly denied."""
+    from homeassistant.components.mobile_app.http_api import (  # noqa: PLC0415
+        RegistrationsView,
+    )
+
+    assert RegistrationsView.requires_auth
+    decider._catalog.rebuild()
+    permissions = _read_only(hass)
+    command = "POST /api/mobile_app/registrations"
+    assert decider.decide(permissions, KIND_HTTP, command, {}).allowed
+    permissions.roles[0].tier_deny.append(command)
+    assert not decider.decide(permissions, KIND_HTTP, command, {}).allowed
+    assert not decider.decide(
+        _read_only(hass), KIND_HTTP, "POST /api/mobile_app/other", {}
+    ).allowed
+
+
+async def test_embedded_todo_card_still_checks_the_named_list(
+    hass: HomeAssistant, decider: Decider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hiding the To-do panel must not break a permitted dashboard card."""
+    await async_setup_component(hass, "todo", {})
+    await hass.async_block_till_done()
+    decider._catalog.rebuild()
+    monkeypatch.setattr(
+        decider._catalog,
+        "apps",
+        lambda: [{"url_path": "todo", "title": "To-do", "kind": "todo"}],
+    )
+    role = compile_role(
+        hass,
+        {
+            "id": "child",
+            "name": "Child",
+            "allow": {"entities": {"entity_ids": {"todo.child": {"read": True}}}},
+            "deny": {},
+            "tiers": {"max": "user"},
+            "apps": {"allow": ["dashboard-child"]},
+        },
+        PermissionLookup(er.async_get(hass), dr.async_get(hass)),
+    )
+    permissions = Permissions(roles=[role])
+    for entity_id, allowed in (("todo.child", True), ("todo.parent", False)):
+        hass.states.async_set(entity_id, "0")
+        result = decider.decide(
+            permissions,
+            KIND_WS,
+            "todo/item/subscribe",
+            {"type": "todo/item/subscribe", "entity_id": entity_id},
+        )
+        assert result.allowed is allowed
+    assert not permissions.app_allowed("todo")
 
 
 async def test_render_template_is_judged_by_its_response(
