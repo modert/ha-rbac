@@ -1219,6 +1219,7 @@ class Evaluator:
         # a stale hit. Keying on the user alone would have frozen the first
         # answer of the day for the rest of it.
         self._cache: dict[tuple[str, tuple[str, ...]], Permissions] = {}
+        self._native_permissions = Permissions(pass_through=True)
         self._perm_lookup = PermissionLookup(er.async_get(hass), dr.async_get(hass))
 
     @callback
@@ -1277,7 +1278,7 @@ class Evaluator:
             # Compiling ROLE_USER here also applies BASELINE_DENY, disabling
             # Assist and signed media URLs for existing household/kiosk users.
             # Pass-through does not promote the upstream HA user's privileges.
-            return Permissions(pass_through=True)
+            return self._native_permissions
         if not role_ids:
             # A per-user deny still needs a base role to narrow.
             role_ids = [ROLE_ADMIN if user.is_admin else ROLE_USER]
