@@ -45,7 +45,8 @@ async def test_missing_assigned_role_does_not_fall_back(hass: HomeAssistant) -> 
 async def test_unassigned_account_still_honors_global_deny(hass: HomeAssistant) -> None:
     """An explicit per-user denial also opts the account into filtering."""
     store = SimpleNamespace(
-        roles=default_roles(), bindings={},
+        roles=default_roles(),
+        bindings={},
         global_deny={"child": {"entities": {"entity_ids": {"lock.test": True}}}},
     )
     permissions = Evaluator(hass, store).async_permissions(_user())
