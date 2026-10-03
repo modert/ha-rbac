@@ -1272,9 +1272,14 @@ class Evaluator:
             return Permissions(pass_through=True)
 
         role_ids = self._store.bindings.get(user.id)
+        if not role_ids and not self._store.global_deny.get(user.id):
+            # Opt-in rollout: an unassigned account keeps stock HA behavior.
+            # Compiling ROLE_USER here also applies BASELINE_DENY, disabling
+            # Assist and signed media URLs for existing household/kiosk users.
+            # Pass-through does not promote the upstream HA user's privileges.
+            return Permissions(pass_through=True)
         if not role_ids:
-            # Unbound users fall back to their existing HA group, so installing
-            # the integration changes no behaviour until roles are assigned.
+            # A per-user deny still needs a base role to narrow.
             role_ids = [ROLE_ADMIN if user.is_admin else ROLE_USER]
 
         now = dt_util.now()
