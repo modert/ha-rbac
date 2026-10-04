@@ -464,6 +464,41 @@ async def test_simulate_judges_decrypted_webhook_operations(
         assert result["allowed"] is allowed
 
 
+async def test_simulate_checks_notification_policy_without_issuing_a_button(
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_user: Any,
+) -> None:
+    """Administrators can inspect a reply grant without sending a notification."""
+    data = hass.data[DATA_RBAC]
+    await data.store.async_create_role(
+        {
+            "id": "replies",
+            "name": "Replies",
+            "tiers": {
+                "max": "user",
+                "allow": ["mobile_app/notification_action/ACK_REMINDER"],
+                "deny": ["fire_event"],
+            },
+        }
+    )
+    await data.store.async_set_binding(hass_read_only_user.id, ["replies"])
+    client = await hass_ws_client(hass)
+    for action, allowed in (("ACK_REMINDER", True), ("PRIVILEGED_ACTION", False)):
+        await client.send_json_auto_id(
+            {
+                "type": f"{DOMAIN}/simulate",
+                "user_id": hass_read_only_user.id,
+                "kind": "notification_action",
+                "command": action,
+            }
+        )
+        result = (await client.receive_json())["result"]
+        assert result["allowed"] is allowed
+        assert result["tier"] is None
+
+
 async def test_bindings_round_trip(
     hass: HomeAssistant,
     entry: MockConfigEntry,

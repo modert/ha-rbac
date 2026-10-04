@@ -50,6 +50,7 @@ if TYPE_CHECKING:
 KIND_WS = "ws"
 KIND_HTTP = "http"
 KIND_WEBHOOK = "webhook"
+KIND_NOTIFICATION_ACTION = "notification_action"
 
 # Home Assistant spells some resources differently in query strings.
 QUERY_RESOURCE_ALIASES = {
@@ -517,6 +518,8 @@ class Decider:
         """Return the verdict for one request."""
         if kind == KIND_WEBHOOK:
             return self.decide_mobile_webhook(permissions, name, payload)
+        if kind == KIND_NOTIFICATION_ACTION:
+            return self.decide_notification_action(permissions, name)
         # A role being recorded is unrestricted while the recording runs, and
         # every request is noted instead of judged. It sits above every gate
         # deliberately, the pass-through below included: a recording that only
@@ -782,6 +785,33 @@ class Decider:
                 "it cannot be run with restricted permissions"
             ),
         )
+
+    @callback
+    def decide_notification_action(
+        self, permissions: Permissions, action: str
+    ) -> Decision:
+        """Check a reply grant; the transport must also prove an issued button.
+
+        An action identifier delegates its automation, not an entity inferred
+        from untrusted event data. Reuse command exceptions, with an admin tier
+        default, so ordinary roles must opt into particular identifiers. This
+        does not grant arbitrary `fire_event` on any transport.
+        """
+        if permissions.full_access:
+            return Decision(allowed=True)
+        if self._catalog.degraded:
+            return Decision(allowed=False, reason=REASON_DEGRADED)
+        for name, tier in (
+            ("mobile_app/fire_event", TIER_OPEN),
+            (f"mobile_app/notification_action/{action}", TIER_ADMIN),
+        ):
+            if not permissions.tier_allowed(name, tier):
+                return Decision(
+                    allowed=False,
+                    reason=REASON_TIER,
+                    detail=f"role does not permit {name!r}",
+                )
+        return Decision(allowed=True)
 
     @callback
     def _decide_app(

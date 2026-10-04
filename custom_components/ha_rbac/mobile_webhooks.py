@@ -18,6 +18,7 @@ from homeassistant.util.decorator import Registry
 from .decide import KIND_WEBHOOK, Decider, Decision
 from .denylog import Denial, DenyLog
 from .filters import REGISTRY, FilterContext
+from .notification_actions import NotificationActions
 from .policy import Evaluator
 
 MODULE = "homeassistant.components.mobile_app.webhook"
@@ -55,6 +56,7 @@ class MobileWebhookGuard:
         self._original: Registry | None = None
         self._commands: _GuardedCommands | None = None
         self._unsubscribe: Any = None
+        self.notifications = NotificationActions(hass, evaluator, decider)
 
     @callback
     def start(self) -> None:
@@ -84,6 +86,7 @@ class MobileWebhookGuard:
             )
         self._module = module
         self._original = commands
+        self.notifications.start()
         self._commands = _GuardedCommands(commands, self)
         module.WEBHOOK_COMMANDS = self._commands
 
@@ -102,6 +105,7 @@ class MobileWebhookGuard:
             self._original.update(self._commands)
             self._module.WEBHOOK_COMMANDS = self._original
         self._commands = None
+        self.notifications.stop()
 
     async def async_handle(
         self,
@@ -127,7 +131,16 @@ class MobileWebhookGuard:
             )
         else:
             permissions = self._evaluator.async_permissions(user)
-            decision = self._decider.decide(permissions, KIND_WEBHOOK, command, payload)
+            if command == "fire_event" and not permissions.full_access:
+                decision, canonical = self.notifications.consume(
+                    entry, permissions, payload
+                )
+                if canonical is not None:
+                    payload = canonical
+            else:
+                decision = self._decider.decide(
+                    permissions, KIND_WEBHOOK, command, payload
+                )
 
         if not decision.allowed:
             self._denylog.async_record(
