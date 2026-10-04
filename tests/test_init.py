@@ -440,6 +440,30 @@ async def test_simulate_explains_a_denial(
     assert "execute_script" in result["detail"]
 
 
+async def test_simulate_judges_decrypted_webhook_operations(
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_user: Any,
+) -> None:
+    """The admin simulator reaches the same webhook policy without executing it."""
+    data = hass.data[DATA_RBAC]
+    await data.store.async_set_binding(hass_read_only_user.id, [ROLE_READ_ONLY])
+    client = await hass_ws_client(hass)
+    for command, allowed in (("update_location", True), ("fire_event", False)):
+        await client.send_json_auto_id(
+            {
+                "type": f"{DOMAIN}/simulate",
+                "user_id": hass_read_only_user.id,
+                "kind": "webhook",
+                "command": command,
+                "payload": {},
+            }
+        )
+        result = (await client.receive_json())["result"]
+        assert result["allowed"] is allowed
+
+
 async def test_bindings_round_trip(
     hass: HomeAssistant,
     entry: MockConfigEntry,

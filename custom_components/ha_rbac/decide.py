@@ -49,6 +49,7 @@ if TYPE_CHECKING:
 
 KIND_WS = "ws"
 KIND_HTTP = "http"
+KIND_WEBHOOK = "webhook"
 
 # Home Assistant spells some resources differently in query strings.
 QUERY_RESOURCE_ALIASES = {
@@ -80,6 +81,19 @@ DOMAIN_PROBE = "_rbac_probe"
 # turns every JavaScript error into a permission denial -- filling the deny log
 # with entries that name no entity and describe nothing the person did.
 WRITES_ONLY_TO_THE_LOG = frozenset({"system_log.write"})
+
+# Core binds these operations to the authenticated mobile registration, not an
+# entity named by the payload. Reporting a phone's telemetry does not grant its
+# owner permission to change arbitrary HA sensor states or device settings.
+MOBILE_REGISTRATION_COMMANDS = frozenset(
+    {
+        "update_location",
+        "register_sensor",
+        "update_sensor_states",
+        "update_registration",
+        "enable_encryption",
+    }
+)
 
 # The Settings panel, whose url path is also the namespace every
 # registry command lives under.
@@ -501,6 +515,8 @@ class Decider:
         query: "Mapping[str, str] | None" = None,
     ) -> Decision:
         """Return the verdict for one request."""
+        if kind == KIND_WEBHOOK:
+            return self.decide_mobile_webhook(permissions, name, payload)
         # A role being recorded is unrestricted while the recording runs, and
         # every request is noted instead of judged. It sits above every gate
         # deliberately, the pass-through below included: a recording that only
@@ -695,6 +711,77 @@ class Decider:
             # administrator can see and change them.
 
         return Decision(allowed=True, resources=sorted(entities), filter_response=True)
+
+    @callback
+    def decide_mobile_webhook(
+        self, permissions: Permissions, command: str, payload: Any
+    ) -> Decision:
+        """Judge a decrypted Companion command using its registration owner.
+
+        Only explicitly supported shapes can reach a restricted user's
+        handler. In particular, a template result has no entity provenance,
+        and events, tags and conversation can invoke unrelated automations.
+        An entity-looking value in their data is not a bound on those effects.
+        """
+        if permissions.full_access:
+            return Decision(allowed=True)
+        if self._catalog.degraded:
+            return Decision(
+                allowed=False,
+                reason=REASON_DEGRADED,
+                detail="permission derivation is not working on this HA version",
+            )
+        name = f"mobile_app/{command}"
+        if not permissions.tier_allowed(name, TIER_OPEN):
+            return Decision(
+                allowed=False,
+                reason=REASON_TIER,
+                detail=f"role does not permit {name!r}",
+            )
+        if command in MOBILE_REGISTRATION_COMMANDS:
+            # Core's schemas and registration-scoped handlers remain in charge
+            # of validation. Do not treat a sensor's value as a control target.
+            return Decision(allowed=True)
+        if command == "get_config":
+            return self.decide(permissions, KIND_WS, "get_config", {})
+        if command == "get_zones":
+            # The guard filters the state list before Core encrypts it.
+            return self.decide(permissions, KIND_WS, "get_states", {})
+        if command == "call_service" and isinstance(payload, dict):
+            # Evaluate only fields Core actually uses. An ignored `target` or
+            # extra entity_id must not make an untargeted action look bounded.
+            if (
+                isinstance(payload.get("domain"), str)
+                and isinstance(payload.get("service"), str)
+                and isinstance(payload.get("service_data", {}), dict)
+            ):
+                return self.decide(
+                    permissions,
+                    KIND_WS,
+                    "call_service",
+                    {
+                        "type": "call_service",
+                        "domain": payload["domain"],
+                        "service": payload["service"],
+                        "service_data": payload.get("service_data", {}),
+                    },
+                )
+        if command == "stream_camera" and isinstance(payload, dict):
+            if isinstance(payload.get("camera_entity_id"), str):
+                return self.decide(
+                    permissions,
+                    KIND_WS,
+                    "camera/stream",
+                    {"entity_id": payload["camera_entity_id"]},
+                )
+        return Decision(
+            allowed=False,
+            reason=REASON_UNBOUNDED,
+            detail=(
+                f"{name!r} has no supported bounded webhook operation; "
+                "it cannot be run with restricted permissions"
+            ),
+        )
 
     @callback
     def _decide_app(

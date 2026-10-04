@@ -40,7 +40,7 @@ The boundary this software claims to hold, and where a bypass is a real finding:
 These are **known, accepted limitations**, documented in [docs/DESIGN.md](docs/DESIGN.md#what-this-does-and-does-not-protect-against). Reports of them are not bugs, because the design does not claim to stop them:
 
 - **Anyone with host access.** A shell or code execution on the machine can read `.storage/auth`, mint an owner token, and defeat Home Assistant's own authentication — not just this layer. Don't give restricted users a shell.
-- **Webhooks** (`/api/webhook/{id}`). They carry no user; the id is the credential. Forwarded as-is, same standing as an automation.
+- **Other integrations' webhooks** (`/api/webhook/{id}`). The id is their credential and they retain their integration's authority. Companion (`mobile_app`) is now covered at its decrypted command dispatcher, using the registration owner; see [the detailed boundary](docs/COMPANION_WEBHOOKS.md).
 - **Automations, scripts and scenes running on their own.** They execute as Home Assistant with no user context — unchanged from stock Home Assistant.
 - **Supervisor add-ons with `homeassistant_api: true`.** They reach Home Assistant over the Supervisor socket and auto-authenticate with no token.
 - **The owner account.** Always pass-through, by design, so you cannot lock yourself out. Restricting the owner is not a goal.

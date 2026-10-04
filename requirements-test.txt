@@ -1,3 +1,17 @@
 # Home Assistant's own test fixtures, packaged for custom components. Pins the
 # Home Assistant version the suite runs against.
 pytest-homeassistant-custom-component==0.13.357
+# The real Companion dispatcher imports its optional camera/cloud/conversation
+# modules even when tests only exercise services, telemetry and encryption.
+PyNaCl==1.6.2
+PyTurboJPEG==1.8.3
+av==17.0.1
+numpy==2.3.2
+hass-nabucasa==2.2.0
+openai==2.45.0
+hassil==3.11.0
+home-assistant-intents==2026.7.30
+mutagen==1.48.1
+pymicro-vad==1.0.1
+pyspeex-noise==1.0.2
+ha-ffmpeg==3.2.2

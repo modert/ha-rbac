@@ -903,13 +903,9 @@ async def test_a_signed_path_is_filtered_for_its_owner(
 
 
 async def test_a_webhook_reaches_home_assistant(proxy_env: dict[str, Any]) -> None:
-    """The companion app talks over `/api/webhook/{id}` and carries no user.
+    """Unrelated webhooks still reach their integration's authentication.
 
-    These were refused, on the grounds that a request naming no user cannot be
-    judged. That took every mobile_app registration offline as soon as the
-    proxy was the only way in, and protected nobody: the id is the credential
-    Home Assistant itself checks, and the body may be encrypted end to end, so
-    there is nothing here to read even when the owner is known.
+    Companion operations are checked separately at its decrypted dispatcher.
     """
     async with (
         aiohttp.ClientSession() as session,

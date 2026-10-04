@@ -298,7 +298,7 @@ def handle_denials_recent(
         vol.Required("type"): f"{DOMAIN}/simulate",
         vol.Required("user_id"): str,
         vol.Required("command"): str,
-        vol.Optional("kind", default="ws"): vol.In(("ws", "http")),
+        vol.Optional("kind", default="ws"): vol.In(("ws", "http", "webhook")),
         vol.Optional("payload", default=dict): dict,
     }
 )
@@ -329,7 +329,11 @@ async def handle_simulate(
             "detail": decision.detail,
             "resources": decision.resources,
             "filter_response": decision.filter_response,
-            "tier": data.catalog.tier_for(msg["command"]),
+            "tier": (
+                None
+                if msg["kind"] == "webhook"
+                else data.catalog.tier_for(msg["command"])
+            ),
             "role_ids": [role.role_id for role in permissions.roles],
             "pass_through": permissions.pass_through,
         },

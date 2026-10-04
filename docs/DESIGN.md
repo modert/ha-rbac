@@ -156,9 +156,9 @@ Taking `8123` for the proxy rather than the other way round is deliberate: the o
 
 **Does not hold against anyone with host access.** Loopback is reachable with a shell or code execution on the machine, and anyone with that can read `.storage/auth`, which contains every refresh token and its signing key. They can mint an access token for the owner and bypass Home Assistant's own authentication entirely, not just this layer. That is a precondition which already loses, so the proxy does not try to close it.
 
-**Webhooks are outside it too.** `/api/webhook/{id}` carries no user, and the id is an unguessable secret that Home Assistant treats as the credential for that endpoint. The body may be encrypted end to end, so there is nothing for this layer to read even where the owner is recorded, as `mobile_app` records a `user_id`. They are forwarded for Home Assistant to authenticate as it always has. Anyone holding a webhook id can act through it without a role applying, which is the same standing as an automation.
+**Companion webhooks are attributed after decryption.** The proxy still forwards `/api/webhook/{id}` for Core to authenticate. For `mobile_app`, a guard on Core's command dispatcher resolves the registration's stored `user_id` and applies the current policy before the handler runs. It covers HTTP, WebSocket and cloudhook delivery through that dispatcher, including encrypted registrations. Unknown commands are refused to restricted accounts. See [the operation-by-operation boundary](COMPANION_WEBHOOKS.md).
 
-This was learned the expensive way. Webhooks were refused at first, on the grounds that a request naming no user cannot be judged. The first time the proxy became the only way in on a real household it took every companion app offline, because that is the transport `mobile_app` uses.
+**Other integrations' webhooks remain outside this boundary.** They have no common user ownership or command format. A bearer identity attached to an arbitrary webhook is not evidence of who owns it. Such integrations need their own ownership and operation adapter; they must not be blanket-blocked or silently assigned the caller's role.
 
 Three consequences worth stating plainly:
 

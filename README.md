@@ -145,7 +145,9 @@ Not sure what to allow? Hit **Record what this role needs**, let them use Home A
 
 **You can't lock yourself out.** The owner account always keeps full access.
 
-**Not everything goes through it.** Automations, add-ons and webhooks reach Home Assistant by other routes, and so does anyone with a login to the machine itself. Roles don't apply there. There's a [plain list of what's covered and what isn't](https://github.com/FezVrasta/ha-rbac/blob/main/docs/DESIGN.md#what-this-does-and-does-not-protect-against).
+**Companion webhooks use the registration owner's role.** Service calls use the same policy as dashboard controls, phone telemetry remains registration-scoped, and zone lists are filtered. Operations without a safely bounded adapter are denied to restricted accounts. See [Companion webhook enforcement](docs/COMPANION_WEBHOOKS.md), including the effect on notification action replies.
+
+**Not everything goes through it.** Automations, add-ons and other integrations' webhooks retain their own authority, as does anyone with a login to the machine itself. There's a [plain list of what's covered and what isn't](docs/DESIGN.md#what-this-does-and-does-not-protect-against).
 
 **It's an alpha.** Tested, and deliberately attacked twice (two adversarial reviews by its author, no external audit yet), but it hasn't lived in anyone else's house yet. Try it on something that isn't your front door, and [tell me what broke](https://github.com/FezVrasta/ha-rbac/issues).
 

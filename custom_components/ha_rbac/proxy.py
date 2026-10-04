@@ -583,21 +583,11 @@ class RbacProxy:
             # webhooks. All of it is forwarded for Home Assistant to
             # authenticate as it always has.
             #
-            # Webhooks were refused here at first, on the grounds that a request
-            # naming no user cannot be reasoned about and the companion app's
-            # webhook can call any service. Running it against a real household
-            # showed what that costs: every mobile_app registration talks over
-            # `/api/webhook/{id}`, so the proxy took the phones offline the
-            # moment it became the only way in.
-            #
-            # The reasoning was wrong as well as expensive. A webhook id is an
-            # unguessable secret that Home Assistant treats as the credential
-            # for that endpoint, and the body may be encrypted end to end, so
-            # there is nothing for this layer to read even when the owner is
-            # known -- `mobile_app` does record a `user_id`. Refusing them
-            # protects nobody who already holds the id and breaks everyone who
-            # holds it legitimately. Webhooks sit outside this boundary, in the
-            # same place as automations and add-ons, and DESIGN.md says so.
+            # Companion is judged by mobile_webhooks at Core's decrypted
+            # command dispatcher, using the registration's owner. That covers
+            # HTTP, websocket and cloud delivery without duplicating crypto or
+            # trusting a bearer token to replace the registration's identity.
+            # Other webhook integrations retain their own authentication.
             pass
         elif not permissions.full_access or self._decider.is_recording(permissions):
             # A full-access user is normally forwarded unjudged, but a recording

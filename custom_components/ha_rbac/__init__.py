@@ -54,6 +54,7 @@ from .dashboards import DashboardEntities
 from .decide import Decider
 from .denylog import DenyLog
 from .filters import REGISTRY
+from .mobile_webhooks import MobileWebhookGuard
 from .models import RbacData
 from .policy import Evaluator
 from .proxy import RbacProxy
@@ -125,6 +126,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         recorder=recorder,
     )
     hass.data[DATA_RBAC] = data
+
+    mobile_webhooks = MobileWebhookGuard(hass, evaluator, decider, denylog)
+    mobile_webhooks.start()
+    data.unsubscribes.append(mobile_webhooks.stop)
 
     store.async_add_listener(evaluator.invalidate)
     for event_type in REGISTRY_EVENTS:
