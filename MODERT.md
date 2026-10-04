@@ -22,7 +22,11 @@ the new registration to the authenticated user. Explicit command denials still
 win. An embedded To-do card may subscribe to its named list when the To-do panel
 is hidden; the regular entity read check still applies.
 
-The upstream webhook limitations remain. This release is intended to restrict
-normal dashboard, search, and device controls; it is not a complete audit of all
-Companion-app and custom-integration paths. Continue merging upstream security
-fixes. Preserve upstream attribution and report vulnerabilities privately.
+Companion webhooks now use the registration owner's current role after Core
+decrypts the request. Service/camera operations reuse the decision engine,
+telemetry stays registration-scoped, and zones are filtered before encryption.
+Unbounded and unknown commands are refused for restricted accounts. See
+`docs/COMPANION_WEBHOOKS.md` for the generic behavior and notification-action
+limitations. Other integrations' webhooks still need ownership adapters; this
+is not a complete audit of all custom-integration paths. Continue merging
+upstream security fixes. Preserve attribution and report vulnerabilities privately.
