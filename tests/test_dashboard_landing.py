@@ -12,7 +12,7 @@ async def test_hidden_default_uses_allowed_dashboard(hass: HomeAssistant) -> Non
     """Rewriting one response must not change another user's default."""
     hass.data[DATA_PANELS] = {
         path: SimpleNamespace(component_name="lovelace", require_admin=False)
-        for path in ("lovelace", "dashboard-child", "dashboard-planes")
+        for path in ("lovelace", "dashboard-child", "dashboard-other")
     }
     ctx = FilterContext(hass, lambda e, k: True, lambda p: p != "lovelace")
     source = {"value": {"default_panel": "lovelace", "onboarded_version": "2026.9"}}

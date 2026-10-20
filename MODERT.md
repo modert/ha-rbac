@@ -1,6 +1,7 @@
 # Modert deployment
 
-Based on FezVrasta/ha-rbac v0.25.0, commit 2b58ae6.
+Based on FezVrasta/ha-rbac v0.26.0, commit 47a6807. The restricted dashboard
+landing fix that used to be carried here is upstream since v0.26.0 (#74).
 
 This fork rolls out access control per account. Accounts without an assigned
 role or a per-user denial retain Home Assistant's native permissions, including
@@ -10,12 +11,6 @@ authenticates every request and applies its native permissions.
 
 Household roles and dashboards live in modert/homeassistant-config. They do not
 belong in this reusable integration. Logan is the first restricted account.
-
-Restricted accounts keep the frontend's empty notfound route. A hidden default
-dashboard is replaced with the first allowed non-admin Lovelace dashboard in
-frontend preference responses, without changing stored personal or system data.
-This prevents Home Assistant 2026.9 from getting stuck on its loading screen
-when the role does not include the household's default Overview.
 
 Companion registration is allowed after the normal tier/app checks: Core binds
 the new registration to the authenticated user. Explicit command denials still
